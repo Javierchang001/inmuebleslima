@@ -1,0 +1,169 @@
+---
+title: "Mercado inmobiliario en Lima"
+author: "Javier Chang"
+date: "28/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+if (!require("ggplot2")) {
+     install.packages("ggplot2", dependencies = TRUE)
+     library(ggplot2)
+}
+if (!require("dplyr")) {
+     install.packages("dplyr", dependencies = TRUE)
+     library(dplyr)
+}
+if (!require("readxl")) {
+     install.packages("readxl", dependencies = TRUE)
+     library(readxl)
+}
+```
+
+## Sinopsis
+
+El presente documento describe la evolucion del mercado inmobiliario de los principales distritos de la ciudad de Lima.
+
+## Fuente de información
+
+La fuente de información es el estudio del BCRP que actualiza de forma trimestral los precios de alquileres y venta de inmuebles en los principales distritos de la ciudad de Lima.
+
+El repositorio de datos se encuentra en [Indicador de precios de alquiler y venta de departamentos](https://www.bcrp.gob.pe/estadisticas/indicador-de-precios-de-venta-de-departamentos.html)
+
+```{r download_data}
+
+## Descarga datos de alquiler
+dfile <- "precios-inmobiliarios-bd-desagregada-alquiler-2020-1.xlsx"
+if (!file.exists(dfile)) {
+     download.file("https://www.bcrp.gob.pe/docs/Estadisticas/inmuebles/precios-inmobiliarios-bd-desagregada-alquiler-2020-1.xlsx",
+                   destfile = dfile)
+}
+alquiler <- read_excel(dfile)
+names(alquiler) <- c("Ano", 
+                     "Trim", 
+                     "Alquiler_USD", 
+                     "Alquiler_SOL", 
+                     "Alquiler_SOLConst", 
+                     "Distrito", 
+                     "Superficie", 
+                     "Nro_habitaciones",
+                     "Nro_banos",
+                     "Nro_garages",
+                     "Piso_ubicacion",
+                     "Vista_al_exterior",
+                     "Anos_antiguedad")
+alquiler$AnoTrim <- paste(alquiler$Ano, alquiler$Trim, sep="-")
+alquiler$Alquiler_USD_m2 <- 12 * alquiler$Alquiler_USD / alquiler$Superficie
+alquiler$Distrito <- tolower(alquiler$Distrito)
+
+## Descarga datos de venta
+dfile <- "precios-inmobiliarios-bd-desagregada-venta-2020-1.xlsx"
+if (!file.exists(dfile)) {
+     download.file("https://www.bcrp.gob.pe/docs/Estadisticas/inmuebles/precios-inmobiliarios-bd-desagregada-venta-2020-1.xlsx",
+                   destfile = dfile)
+}
+venta <- read_excel(dfile)
+names(venta) <- c("Ano", 
+                     "Trim", 
+                     "Precio_USD", 
+                     "Precio_SOL", 
+                     "Precio_SOLConst", 
+                     "Distrito", 
+                     "Superficie", 
+                     "Nro_habitaciones",
+                     "Nro_banos",
+                     "Nro_garages",
+                     "Piso_ubicacion",
+                     "Vista_al_exterior",
+                     "Anos_antiguedad")
+venta$AnoTrim <- paste(venta$Ano, venta$Trim, sep="-")
+venta$Precio_USD_m2 <- venta$Precio_USD / venta$Superficie
+venta$Distrito <- tolower(venta$Distrito)
+```
+
+## Resultados
+
+### Evolucion de precios de alquiler de departamentos por Distrito
+
+```{r alquiler}
+## Alquiler por distrito
+alquilersummary <- alquiler %>%
+      group_by(AnoTrim, Distrito) %>%
+      summarise(Alquiler_USD_m2=mean(Alquiler_USD_m2)) %>%
+      ungroup()
+## Alquiler promedio
+alquilerprom <- alquilersummary %>%
+      group_by(AnoTrim, Distrito="promedio") %>%
+      summarise(Alquiler_USD_m2=mean(Alquiler_USD_m2)) %>%
+      ungroup()
+## Grafica alquiler
+ggplot()+
+      geom_line(data=alquilersummary, 
+                aes(x=AnoTrim, 
+                    y=Alquiler_USD_m2, 
+                    group=Distrito, 
+                    color=Distrito, 
+                    linetype=Distrito))+
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+      geom_line(data=alquilerprom,
+                aes(x=AnoTrim,
+                y=Alquiler_USD_m2, group=1), size=1)
+```
+
+### Evolucion de precios de venta de departamentos por Distrito
+
+```{r venta}
+## Venta por distrito
+distritos <- unique(alquilersummary$Distrito)
+ventasummary <- venta %>%
+      filter(AnoTrim>="2010-2" & Distrito %in% distritos) %>%
+      group_by(AnoTrim, Distrito) %>%
+      summarise(Precio_USD_m2=mean(Precio_USD_m2)) %>%
+      ungroup()
+## Venta promedio
+ventaprom <- ventasummary %>%
+      group_by(AnoTrim, Distrito="promedio") %>%
+      summarise(Precio_USD_m2=mean(Precio_USD_m2)) %>%
+      ungroup()
+## Grafica alquiler
+ggplot()+
+      geom_line(data=ventasummary, 
+                aes(x=AnoTrim, 
+                    y=Precio_USD_m2, 
+                    group=Distrito, 
+                    color=Distrito, 
+                    linetype=Distrito))+
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+      geom_line(data=ventaprom,
+                aes(x=AnoTrim,
+                y=Precio_USD_m2, group=1), size=1)
+```
+
+### Ratio Precio de venta / Ingreso por alquiler anual (PER – Price to Earnings Ratio)
+
+```{r Price_to_Earning}
+
+## Calcular PER
+persummary <- merge(alquilersummary, ventasummary)
+persummary$per <- persummary$Precio_USD_m2 / persummary$Alquiler_USD_m2
+
+## PER promedio
+perprom <- merge(alquilerprom, ventaprom)
+perprom$per <- perprom$Precio_USD_m2 / perprom$Alquiler_USD_m2
+
+## Grafica PER
+ggplot()+
+      geom_line(data=persummary, 
+                aes(x=AnoTrim, 
+                    y=per, 
+                    group=Distrito, 
+                    color=Distrito, 
+                    linetype=Distrito))+
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+      geom_line(data=perprom,
+                aes(x=AnoTrim,
+                y=per, group=1), size=1)
+
+```
+
