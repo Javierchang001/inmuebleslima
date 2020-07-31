@@ -19,6 +19,10 @@ if (!require("readxl")) {
      install.packages("readxl", dependencies = TRUE)
      library(readxl)
 }
+if (!require("kableExtra")) {
+   install.packages("kableExtra", dependencies = TRUE)
+   library(kableExtra)
+}
 ```
 
 ## Sinopsis
@@ -142,28 +146,44 @@ ggplot()+
 
 ### Ratio Precio de venta / Ingreso por alquiler anual (PER – Price to Earnings Ratio)
 
+Evolucion del PER
+
 ```{r Price_to_Earning}
 
 ## Calcular PER
 persummary <- merge(alquilersummary, ventasummary)
-persummary$per <- persummary$Precio_USD_m2 / persummary$Alquiler_USD_m2
+persummary$PER <- persummary$Precio_USD_m2 / persummary$Alquiler_USD_m2
 
 ## PER promedio
 perprom <- merge(alquilerprom, ventaprom)
-perprom$per <- perprom$Precio_USD_m2 / perprom$Alquiler_USD_m2
+perprom$PER <- perprom$Precio_USD_m2 / perprom$Alquiler_USD_m2
 
 ## Grafica PER
 ggplot()+
       geom_line(data=persummary, 
                 aes(x=AnoTrim, 
-                    y=per, 
+                    y=PER, 
                     group=Distrito, 
                     color=Distrito, 
                     linetype=Distrito))+
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
       geom_line(data=perprom,
                 aes(x=AnoTrim,
-                y=per, group=1), size=1)
+                y=PER, group=1), size=1)
+
+```
+
+Ranking PER
+
+```{r ranking_per}
+perprom <- persummary[persummary$AnoTrim=="2020-1",] %>%
+   arrange(PER)
+
+knitr::kable(perprom,
+             format="html",
+             digits=2,
+             format.args = list(decimal.mark = ".", big.mark = ","))%>%
+   kable_styling(font_size = 10, full_width=TRUE)
 
 ```
 
