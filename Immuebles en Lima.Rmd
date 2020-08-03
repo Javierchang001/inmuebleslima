@@ -113,6 +113,13 @@ ggplot()+
       geom_line(data=alquilerprom,
                 aes(x=AnoTrim,
                 y=Alquiler_USD_m2, group=1), size=1)
+## grafica boxplot
+ggplot(data=alquiler[alquiler$AnoTrim=="2020-1",], aes(Distrito, Alquiler_USD_m2))+
+   geom_boxplot()+
+   coord_flip()+
+   ggtitle("Alquiler por m2 por distrito 2020-1")+
+   theme(plot.title = element_text(hjust = 0.5))
+
 ```
 
 ### Evolucion de precios de venta de departamentos por Distrito
@@ -130,7 +137,7 @@ ventaprom <- ventasummary %>%
       group_by(AnoTrim, Distrito="promedio") %>%
       summarise(Precio_USD_m2=mean(Precio_USD_m2)) %>%
       ungroup()
-## Grafica alquiler
+## Grafica precio venta
 ggplot()+
       geom_line(data=ventasummary, 
                 aes(x=AnoTrim, 
@@ -142,6 +149,13 @@ ggplot()+
       geom_line(data=ventaprom,
                 aes(x=AnoTrim,
                 y=Precio_USD_m2, group=1), size=1)
+## grafica boxplot
+ggplot(data=venta[venta$AnoTrim=="2020-1",], aes(Distrito, Precio_USD_m2))+
+   geom_boxplot()+
+   coord_flip()+
+   ggtitle("Precios de venta por m2 por distrito 2020-1")+
+   theme(plot.title = element_text(hjust = 0.5))
+
 ```
 
 ### Ratio Precio de venta / Ingreso por alquiler anual (PER – Price to Earnings Ratio)
